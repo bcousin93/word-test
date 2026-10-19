@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Picture Spell</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2343A047'/%3E%3Ctext x='32' y='46' text-anchor='middle' font-family='Arial Rounded MT Bold,Arial,sans-serif' font-weight='700' font-size='40' fill='white'%3EA%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap">
+<style>
+/* Layout: one phone-first column. Picture card on top, six-row guess grid, ABC keyboard at the bottom like alphabet blocks. */
+:root{
+  --bg:#EAF1F7;
+  --surface:#FFFFFF;
+  --ink:#22304A;
+  --muted:#6C7B92;
+  --line:#CFD9E4;
+  --accent:#FF7A1A;
+  --accent-ink:#1F1300;
+  --ok:#43A047;
+  --ok-ink:#FFFFFF;
+  --ok-text:#2E7D32;
+  --near:#F2C14E;
+  --near-ink:#4A3A00;
+  --off:#6E7B8C;
+  --off-ink:#FFFFFF;
+  --key:#FFFFFF;
+  --key-ink:#22304A;
+  --key-edge:#C2CEDB;
+  --display:'Fredoka','Nunito',system-ui,sans-serif;
+  --body:'Nunito',system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121A24; --surface:#1C2733; --ink:#F0F4F8; --muted:#9EB0C4; --line:#2E3C4C;
+    --accent:#FFA14A; --accent-ink:#1A1200;
+    --ok:#3E9F43; --ok-ink:#FFFFFF; --ok-text:#7BD683; --near:#D9AD3A; --near-ink:#1E1700; --off:#4A5868; --off-ink:#D5DEE8;
+    --key:#263442; --key-ink:#F0F4F8; --key-edge:#0B1118;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121A24; --surface:#1C2733; --ink:#F0F4F8; --muted:#9EB0C4; --line:#2E3C4C;
+  --accent:#FFA14A; --accent-ink:#1A1200;
+  --ok:#3E9F43; --ok-ink:#FFFFFF; --ok-text:#7BD683; --near:#D9AD3A; --near-ink:#1E1700; --off:#4A5868; --off-ink:#D5DEE8;
+  --key:#263442; --key-ink:#F0F4F8; --key-edge:#0B1118;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+html,body{height:100%}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--body);
+  font-size:16px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:max(10px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-bottom,0px));
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
+  -webkit-user-select:none;
+}
+button{font-family:inherit;touch-action:manipulation}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+.app{max-width:520px;margin:0 auto;height:100%;display:flex;flex-direction:column;gap:12px}
+/* On phones only the board scrolls; the picture stays at the top and the keyboard at the bottom. */
+.board{flex:1 1 auto;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:2px 0 6px;-webkit-overflow-scrolling:touch}
+
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+h1{font-family:var(--display);font-weight:700;font-size:1.45rem;margin:0;letter-spacing:.01em;text-wrap:balance}
+.hud{display:flex;align-items:center;gap:10px}
+.stars{font-family:var(--display);font-weight:600;font-size:1.05rem;font-variant-numeric:tabular-nums;background:var(--surface);border:2px solid var(--line);border-radius:999px;padding:4px 12px;min-height:34px;display:inline-flex;align-items:center;gap:4px}
+.mode{display:inline-flex;background:var(--surface);border:2px solid var(--line);border-radius:999px;padding:2px}
+.mode button{border:0;background:transparent;font:600 .9rem var(--display);color:var(--muted);padding:5px 12px;border-radius:999px;cursor:pointer;min-height:30px}
+.mode button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.app[data-case="lower"] .tile,.app[data-case="lower"] .key{text-transform:lowercase}
+.fs{width:36px;height:36px;border-radius:50%;border:2px solid var(--line);background:var(--surface);color:var(--ink);font-size:1.05rem;cursor:pointer;display:grid;place-items:center}
+.fs:active{transform:translateY(1px)}
+
+.card{position:relative;background:var(--surface);border:2px solid var(--line);border-radius:22px;padding:14px 16px 12px;display:flex;flex-direction:column;align-items:center;gap:6px}
+.pic{font-size:clamp(68px,20vw,110px);line-height:1.15;text-align:center;font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif}
+.say{position:absolute;top:10px;right:10px;width:46px;height:46px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);font-size:1.35rem;cursor:pointer;box-shadow:0 2px 0 var(--key-edge);display:grid;place-items:center}
+.say:active{transform:translateY(2px);box-shadow:none}
+.status{font-family:var(--display);font-weight:600;font-size:1.1rem;text-align:center;min-height:1.6em;color:var(--ink);text-wrap:balance}
+.status.good{color:var(--ok-text)}
+.slot{display:flex;justify-content:center;align-items:center;min-height:0;width:100%}
+.next{display:none;border:0;border-radius:999px;background:var(--accent);color:var(--accent-ink);font:700 1.15rem var(--display);padding:10px 26px;min-height:48px;cursor:pointer;box-shadow:0 3px 0 var(--key-edge);margin-top:2px}
+.next:active{transform:translateY(3px);box-shadow:none}
+.card.done .next{display:inline-block}
+
+.grid{--n:5;--tile:min(54px,calc((100vw - 32px - (var(--n) - 1) * 6px) / var(--n)));display:grid;gap:6px;justify-content:center}
+.row{display:grid;grid-template-columns:repeat(var(--n),var(--tile));gap:6px;justify-content:center}
+.tile{
+  width:var(--tile);height:var(--tile);
+  border:3px solid var(--line);border-radius:12px;background:var(--surface);
+  display:grid;place-items:center;
+  font:700 calc(var(--tile) * .56) var(--display);text-transform:uppercase;color:var(--ink);
+}
+.tile.filled{border-color:var(--muted)}
+.tile.pop{animation:pop .12s ease-out}
+.tile.ok{background:var(--ok);border-color:var(--ok);color:var(--ok-ink)}
+.tile.near{background:var(--near);border-color:var(--near);color:var(--near-ink)}
+.tile.off{background:var(--off);border-color:var(--off);color:var(--off-ink)}
+.tile.flip{animation:flip .5s ease-in-out both}
+.row.shake{animation:shake .4s ease-in-out}
+.row.win .tile{animation:bounce .6s ease-out both}
+.row.active .tile:not(.filled):first-child,
+.row.active .tile.filled + .tile:not(.filled){border-color:var(--accent)}
+
+.legend{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);font-weight:700}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:14px;height:14px;border-radius:4px;display:inline-block}
+.legend .ok{background:var(--ok)} .legend .near{background:var(--near)} .legend .off{background:var(--off)}
+
+.left,.right{display:contents}
+.kb{flex:0 0 auto;display:grid;gap:6px;width:100%;max-width:420px;margin-inline:auto}
+.krow{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.key{
+  min-height:50px;border:0;border-radius:10px;
+  background:var(--key);color:var(--key-ink);
+  box-shadow:0 3px 0 var(--key-edge);
+  font:600 1.35rem var(--display);cursor:pointer;
+  display:grid;place-items:center;
+}
+.key:active{transform:translateY(3px);box-shadow:none}
+.key.ok{background:var(--ok);color:var(--ok-ink)}
+.key.near{background:var(--near);color:var(--near-ink)}
+.key.off{background:var(--off);color:var(--off-ink);box-shadow:none;opacity:.6}
+.key.gone{opacity:.22;box-shadow:none}
+.key:disabled{cursor:default;transform:none}
+.key.del{font-size:1.25rem}
+.key.check{background:var(--accent);color:var(--accent-ink);font-size:1.5rem}
+
+canvas#confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:50}
+
+@keyframes pop{0%{transform:scale(.85)}60%{transform:scale(1.08)}100%{transform:scale(1)}}
+@keyframes flip{0%{transform:rotateX(0)}50%{transform:rotateX(90deg)}100%{transform:rotateX(0)}}
+@keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-6px)}40%,60%{transform:translateX(6px)}}
+@keyframes bounce{0%{transform:translateY(0)}35%{transform:translateY(-16px)}60%{transform:translateY(3px)}100%{transform:translateY(0)}}
+@media (prefers-reduced-motion: reduce){
+  .tile,.row,.row.win .tile{animation:none !important}
+}
+@media (min-width:480px){
+  .key{min-height:56px}
+}
+/* Short phone screens: smaller picture and keys so more of the grid shows. */
+@media (max-width:899px) and (max-height:740px){
+  .pic{font-size:clamp(56px,16vw,84px)}
+  .card{padding:10px 14px 8px}
+  .legend{display:none}
+  .key{min-height:46px}
+}
+/* Desktop and landscape tablets: fill the screen. Picture and grid on the left, a big keyboard on the right. */
+@media (min-width:900px) and (min-height:560px){
+  .app{max-width:1240px;height:100%;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);grid-template-areas:"head head" "left right";column-gap:48px;row-gap:12px;align-items:center}
+  header{grid-area:head}
+  .left{grid-area:left;display:flex;flex-direction:column;gap:14px;justify-content:center;min-width:0}
+  .right{grid-area:right;display:flex;flex-direction:column;justify-content:center;min-width:0}
+  .card{width:100%;max-width:560px;margin-inline:auto}
+  .pic{font-size:clamp(90px,15vh,150px)}
+  .status{font-size:1.3rem}
+  .slot{min-height:56px}
+  .grid{--tile:min(64px,calc((100vh - 440px) / 6))}
+  .board{flex:0 0 auto;overflow:visible}
+  .kb{max-width:560px;padding:0}
+  .key{min-height:64px;font-size:1.7rem;border-radius:12px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Picture Spell</h1>
+    <div class="hud">
+      <div class="stars" id="stars" title="Words spelled">⭐ <span id="starCount">0</span></div>
+      <div class="mode" role="group" aria-label="Mode">
+        <button type="button" id="modeEasy" aria-pressed="true">Easy</button>
+        <button type="button" id="modeNormal" aria-pressed="false">Normal</button>
+      </div>
+      <div class="mode" role="group" aria-label="Letter case">
+        <button type="button" id="caseUpper" aria-pressed="true">ABC</button>
+        <button type="button" id="caseLower" aria-pressed="false">abc</button>
+      </div>
+      <button type="button" class="fs" id="fs" aria-label="Full screen" title="Full screen" hidden>⛶</button>
+    </div>
+  </header>
+
+  <div class="left">
+  <section class="card" id="card">
+    <button type="button" class="say" id="say" aria-label="Hear the word">🔊</button>
+    <div class="pic" id="pic" aria-hidden="true">🪣</div>
+    <div class="status" id="status" aria-live="polite">Spell the picture!</div>
+    <div class="slot"><button type="button" class="next" id="next">Next picture ▶</button></div>
+  </section>
+
+  <div class="board" id="board">
+    <section class="grid" id="grid" aria-label="Your guesses"></section>
+    <div class="legend" aria-hidden="true">
+      <span><i class="ok"></i> right spot</span>
+      <span><i class="near"></i> in the word</span>
+      <span><i class="off"></i> not in word</span>
+    </div>
+  </div>
+  </div>
+
+  <div class="right">
+  <section class="kb" id="kb" aria-label="Letters"></section>
+  </div>
+</div>
+<canvas id="confetti"></canvas>
+
+<script>
+(function(){
+'use strict';
+
+// Everyday things a 1st grader can name from the picture. Each emoji maps to one common word, 3 to 6 letters.
+const WORDS = [
+  ['cat','🐱'],['dog','🐶'],['sun','☀️'],['bee','🐝'],['egg','🥚'],['hat','🎩'],['bed','🛏️'],['car','🚗'],['bus','🚌'],
+  ['pig','🐷'],['cow','🐮'],['key','🔑'],['ant','🐜'],['owl','🦉'],['fox','🦊'],['map','🗺️'],['box','📦'],['pie','🥧'],
+  ['web','🕸️'],['bat','🦇'],['saw','🪚'],['ice','🧊'],['pen','🖊️'],['ear','👂'],['eye','👁️'],['leg','🦵'],['log','🪵'],
+  ['frog','🐸'],['fish','🐟'],['bird','🐦'],['duck','🦆'],['bear','🐻'],['lion','🦁'],['goat','🐐'],['wolf','🐺'],
+  ['deer','🦌'],['crab','🦀'],['shoe','👟'],['boot','👢'],['kite','🪁'],['ball','⚽'],['drum','🥁'],['bell','🔔'],
+  ['door','🚪'],['soap','🧼'],['book','📕'],['lock','🔒'],['bike','🚲'],['boat','⛵'],['taco','🌮'],['tent','⛺'],
+  ['fire','🔥'],['wave','🌊'],['tree','🌳'],['rose','🌹'],['leaf','🍁'],['cake','🎂'],['corn','🌽'],['pear','🍐'],
+  ['milk','🥛'],['bowl','🥣'],['salt','🧂'],['coin','🪙'],['coat','🧥'],['ring','💍'],['hook','🪝'],['swan','🦢'],
+  ['sled','🛷'],['nose','👃'],['foot','🦶'],['hand','✋'],['bone','🦴'],['rock','🪨'],['moon','🌙'],['panda','🐼'],
+  ['star','⭐'],['rain','🌧️'],
+  ['snake','🐍'],['snail','🐌'],['zebra','🦓'],['chick','🐣'],['sheep','🐑'],['horse','🐴'],['shark','🦈'],
+  ['whale','🐳'],['eagle','🦅'],['mouse','🐭'],['scarf','🧣'],['crown','👑'],['piano','🎹'],['chair','🪑'],
+  ['broom','🧹'],['ruler','📏'],['train','🚂'],['plane','✈️'],['truck','🚚'],['house','🏠'],['bread','🍞'],
+  ['pizza','🍕'],['lemon','🍋'],['apple','🍎'],['peach','🍑'],['onion','🧅'],['juice','🧃'],['honey','🍯'],
+  ['spoon','🥄'],['plate','🍽️'],['candy','🍬'],['donut','🍩'],['fries','🍟'],['clock','⏰'],['watch','⌚'],
+  ['phone','📱'],['shirt','👕'],['pants','👖'],['dress','👗'],['medal','🥇'],['tooth','🦷'],['brain','🧠'],
+  ['heart','❤️'],['shell','🐚'],['cloud','☁️'],
+  ['turtle','🐢'],['monkey','🐒'],['lizard','🦎'],['spider','🕷️'],['parrot','🦜'],['bucket','🪣'],['candle','🕯️'],
+  ['mirror','🪞'],['basket','🧺'],['hammer','🔨'],['ladder','🪜'],['magnet','🧲'],['pencil','✏️'],['crayon','🖍️'],
+  ['puzzle','🧩'],['rocket','🚀'],['robot','🤖'],['cactus','🌵'],['flower','🌼'],['banana','🍌'],['orange','🍊'],
+  ['carrot','🥕'],['cheese','🧀'],['cookie','🍪'],['potato','🥔'],['tomato','🍅'],['camera','📷'],['bunny','🐰'],
+  ['violin','🎻'],['trophy','🏆'],['window','🪟'],['sponge','🧽'],['burger','🍔'],['waffle','🧇'],['pepper','🫑'],
+];
+
+const MAX_TRIES = 6;
+const KEY_ROWS = ['ABCDEFG', 'HIJKLMN', 'OPQRSTU', 'VWXYZ'];
+const STATE_RANK = { off: 1, near: 2, ok: 3 };
+
+const el = {
+  pic: document.getElementById('pic'),
+  status: document.getElementById('status'),
+  card: document.getElementById('card'),
+  grid: document.getElementById('grid'),
+  kb: document.getElementById('kb'),
+  say: document.getElementById('say'),
+  next: document.getElementById('next'),
+  starCount: document.getElementById('starCount'),
+  modeEasy: document.getElementById('modeEasy'),
+  modeNormal: document.getElementById('modeNormal'),
+  caseUpper: document.getElementById('caseUpper'),
+  caseLower: document.getElementById('caseLower'),
+  app: document.querySelector('.app'),
+  board: document.getElementById('board'),
+  confetti: document.getElementById('confetti'),
+};
+
+let deck = [], deckPos = -1;
+let word = '', emoji = '';
+let guesses = [], current = '';
+let over = false, busy = false;
+let keyState = {};
+let mode = 'easy';
+let letterCase = 'upper';
+let stars = 0;
+let interacted = false;
+let started = false;
+let pendingKeys = [];
+
+function reducedMotion() { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+
+// First tap of the session: swaps the Start button for the game and says the first word.
+function ensureStarted(sayIt) {
+  if (started) return;
+  started = true; interacted = true;
+  el.card.classList.remove('done');
+  el.next.textContent = 'Next picture ▶';
+  if (sayIt) speak(word);
+}
+
+function scrollActiveRow() {
+  const r = activeRowFor(guesses.length);
+  if (!r) return;
+  try { r.scrollIntoView({ block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' }); } catch (e) {}
+}
+
+function disp(w) { return letterCase === 'lower' ? w.toLowerCase() : w.toUpperCase(); }
+
+function store(key, value) { try { localStorage.setItem(key, String(value)); } catch (e) {} }
+function load(key, fallback) { try { const v = localStorage.getItem(key); return v === null ? fallback : v; } catch (e) { return fallback; } }
+
+function shuffle(list) {
+  const a = list.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function buildDeck() {
+  deck = shuffle(WORDS);
+  // Start gently: the first picture is always a 3- or 4-letter word.
+  const i = deck.findIndex(w => w[0].length <= 4);
+  if (i > 0) { const [first] = deck.splice(i, 1); deck.unshift(first); }
+  deckPos = -1;
+}
+
+// Wordle scoring, two passes so repeated letters come out right (SPOON, APPLE, COOKIE).
+function score(guess, answer) {
+  const n = answer.length;
+  const result = new Array(n).fill('off');
+  const counts = {};
+  for (let i = 0; i < n; i++) counts[answer[i]] = (counts[answer[i]] || 0) + 1;
+  for (let i = 0; i < n; i++) {
+    if (guess[i] === answer[i]) { result[i] = 'ok'; counts[guess[i]]--; }
+  }
+  for (let i = 0; i < n; i++) {
+    if (result[i] === 'ok') continue;
+    if (counts[guess[i]] > 0) { result[i] = 'near'; counts[guess[i]]--; }
+  }
+  return result;
+}
+
+let speakSeq = 0;
+const PAUSE_AFTER_LETTERS_MS = 700;
+const NEW_WORD_SPEAK_DELAY_MS = 500;
+// Chromium can garbage-collect an utterance nothing references and then never fire its end event. Keep them here until they finish.
+const liveUtterances = new Set();
+
+function utterance(text, rate) {
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'en-US';
+  u.rate = rate;
+  const voices = window.speechSynthesis.getVoices();
+  const v = voices.find(x => /^en[-_]US/i.test(x.lang) && /Samantha|Google US English|Zira|Aria/i.test(x.name))
+         || voices.find(x => /^en[-_]US/i.test(x.lang))
+         || voices.find(x => /^en/i.test(x.lang));
+  if (v) u.voice = v;
+  liveUtterances.add(u);
+  u.addEventListener('end', () => liveUtterances.delete(u));
+  u.addEventListener('error', () => liveUtterances.delete(u));
+  return u;
+}
+
+function speak(text) {
+  if (!('speechSynthesis' in window)) return;
+  try {
+    speakSeq++;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance(text, 0.85));
+  } catch (e) {}
+}
+
+// Spell the word letter by letter, pause, then say the whole word: "B, U, C, K, E, T ... bucket!"
+function speakSpelled(w) {
+  if (!('speechSynthesis' in window)) return;
+  try {
+    const seq = ++speakSeq;
+    window.speechSynthesis.cancel();
+    const letters = utterance(w.toUpperCase().split('').join(', '), 0.8);
+    let followed = false;
+    const sayWord = () => {
+      if (followed || seq !== speakSeq) return;
+      followed = true;
+      setTimeout(() => {
+        if (seq !== speakSeq) return;
+        window.speechSynthesis.speak(utterance(w + '!', 0.85));
+      }, PAUSE_AFTER_LETTERS_MS);
+    };
+    letters.onend = sayWord;
+    letters.onerror = e => { if (e && e.error !== 'canceled' && e.error !== 'interrupted') sayWord(); };
+    window.speechSynthesis.speak(letters);
+  } catch (e) {}
+}
+
+function setStatus(text, good) {
+  el.status.textContent = text;
+  el.status.classList.toggle('good', !!good);
+}
+
+function nextWord() {
+  deckPos++;
+  if (deckPos >= deck.length) buildDeck(), deckPos = 0;
+  [word, emoji] = deck[deckPos];
+  guesses = []; current = ''; over = false; busy = false; keyState = {}; pendingKeys = [];
+  el.pic.textContent = emoji;
+  el.card.classList.remove('done');
+  setStatus('Spell the picture!');
+  renderGrid();
+  renderKeys();
+  el.board.scrollTop = 0;
+  // Let the new picture land before saying the word.
+  if (interacted) {
+    const pos = deckPos;
+    setTimeout(() => { if (deckPos === pos && !over) speak(word); }, NEW_WORD_SPEAK_DELAY_MS);
+  }
+}
+
+// popIndex: the tile in the active row that was just typed, so only that one pops.
+function renderGrid(popIndex) {
+  const n = word.length;
+  el.grid.style.setProperty('--n', n);
+  el.grid.innerHTML = '';
+  for (let r = 0; r < MAX_TRIES; r++) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    const isActive = r === guesses.length && !over;
+    const text = r < guesses.length ? guesses[r].text : (isActive ? current : '');
+    if (isActive) row.classList.add('active');
+    for (let c = 0; c < n; c++) {
+      const t = document.createElement('div');
+      t.className = 'tile';
+      const ch = text[c] || '';
+      t.textContent = ch;
+      if (ch) t.classList.add('filled');
+      if (isActive && c === popIndex) t.classList.add('pop');
+      if (r < guesses.length) t.classList.add(guesses[r].marks[c]);
+      row.appendChild(t);
+    }
+    el.grid.appendChild(row);
+  }
+}
+
+function renderKeys() {
+  if (!el.kb.firstChild) {
+    KEY_ROWS.forEach((letters, ri) => {
+      const row = document.createElement('div');
+      row.className = 'krow';
+      letters.split('').forEach(L => {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'key'; b.dataset.key = L.toLowerCase(); b.textContent = L;
+        b.setAttribute('aria-label', L);
+        b.addEventListener('click', () => addLetter(L.toLowerCase()));
+        row.appendChild(b);
+      });
+      if (ri === KEY_ROWS.length - 1) {
+        const del = document.createElement('button');
+        del.type = 'button'; del.className = 'key del'; del.dataset.key = 'del'; del.textContent = '⌫';
+        del.setAttribute('aria-label', 'Delete');
+        del.addEventListener('click', delLetter);
+        const chk = document.createElement('button');
+        chk.type = 'button'; chk.className = 'key check'; chk.dataset.key = 'check'; chk.textContent = '✓';
+        chk.setAttribute('aria-label', 'Check');
+        chk.addEventListener('click', check);
+        row.appendChild(del); row.appendChild(chk);
+      }
+      el.kb.appendChild(row);
+    });
+  }
+  const inWord = new Set(word.split(''));
+  el.kb.querySelectorAll('.key').forEach(b => {
+    const k = b.dataset.key;
+    if (k === 'del' || k === 'check') { b.disabled = over; return; }
+    b.classList.remove('ok', 'near', 'off', 'gone');
+    const st = keyState[k];
+    if (st) b.classList.add(st);
+    const hidden = mode === 'easy' && !inWord.has(k);
+    if (hidden) b.classList.add('gone');
+    b.disabled = over || hidden || st === 'off';
+  });
+}
+
+function keyAllowed(k) {
+  if (mode === 'easy' && !word.includes(k)) return false;
+  if (keyState[k] === 'off') return false;
+  return true;
+}
+
+function addLetter(k) {
+  ensureStarted(true);
+  if (over) return;
+  if (busy) {
+    // Tiles are still flipping. Keep the tap and apply it to the next row once the flip lands.
+    if (pendingKeys.length < word.length) pendingKeys.push(k);
+    return;
+  }
+  if (!keyAllowed(k)) return;
+  if (current.length >= word.length) return;
+  current += k;
+  renderGrid(current.length - 1);
+}
+
+function delLetter() {
+  ensureStarted(false);
+  if (over) return;
+  if (busy) { pendingKeys.pop(); return; }
+  current = current.slice(0, -1);
+  renderGrid();
+}
+
+function check() {
+  ensureStarted(false);
+  if (over || busy) return;
+  if (current.length < word.length) {
+    const row = activeRowFor(guesses.length);
+    if (row) { row.classList.remove('shake'); void row.offsetWidth; row.classList.add('shake'); }
+    setStatus('Fill in all the boxes first');
+    return;
+  }
+  busy = true;
+  const marks = score(current, word);
+  const guess = { text: current, marks };
+  guesses.push(guess);
+  current = '';
+  // Read the guess back as the tiles flip.
+  speak(guess.text);
+
+  for (let i = 0; i < marks.length; i++) {
+    const k = guess.text[i];
+    if (!keyState[k] || STATE_RANK[marks[i]] > STATE_RANK[keyState[k]]) keyState[k] = marks[i];
+  }
+
+  const row = activeRowFor(guesses.length - 1);
+  const tiles = row ? Array.from(row.children) : [];
+  const reduce = reducedMotion();
+  const step = reduce ? 0 : 140;
+  tiles.forEach((t, i) => {
+    setTimeout(() => t.classList.add('flip'), i * step);
+    setTimeout(() => t.classList.add(marks[i]), i * step + (reduce ? 0 : 250));
+  });
+  const won = marks.every(m => m === 'ok');
+  // The last tile's flip starts at (n-1)*step and runs 500ms; rebuild the grid only after it lands.
+  setTimeout(() => finishCheck(won), (tiles.length - 1) * step + (reduce ? 0 : 520));
+}
+
+function activeRowFor(r) { return el.grid.children[r]; }
+
+function finishCheck(won) {
+  busy = false;
+  if (won) {
+    over = true;
+    stars++; store('ps-stars', stars); el.starCount.textContent = stars;
+    setStatus('You spelled ' + disp(word) + '! ⭐', true);
+    el.card.classList.add('done');
+    speakSpelled(word);
+    confetti();
+  } else if (guesses.length >= MAX_TRIES) {
+    over = true;
+    setStatus('The word is ' + disp(word) + '. Try the next one!');
+    el.card.classList.add('done');
+    speakSpelled(word);
+  } else {
+    const left = MAX_TRIES - guesses.length;
+    setStatus(left === 1 ? 'Last try! You can do it' : 'Try again. ' + left + ' tries left');
+  }
+  renderGrid();
+  renderKeys();
+  if (won) { const r = activeRowFor(guesses.length - 1); if (r) r.classList.add('win'); }
+  if (over) {
+    pendingKeys = [];
+    el.next.focus({ preventScroll: true });
+  } else {
+    scrollActiveRow();
+    const queued = pendingKeys; pendingKeys = [];
+    queued.forEach(addLetter);
+  }
+}
+
+function setMode(m) {
+  mode = m; store('ps-mode', m);
+  el.modeEasy.setAttribute('aria-pressed', m === 'easy');
+  el.modeNormal.setAttribute('aria-pressed', m === 'normal');
+  renderKeys();
+}
+
+function setCase(c) {
+  letterCase = c; store('ps-case', c);
+  el.app.dataset.case = c;
+  el.caseUpper.setAttribute('aria-pressed', c === 'upper');
+  el.caseLower.setAttribute('aria-pressed', c === 'lower');
+  if (over) setStatus(el.status.textContent.replace(new RegExp(word, 'i'), disp(word)), el.status.classList.contains('good'));
+}
+
+// Confetti burst on a win. Skipped when the viewer prefers reduced motion.
+function confetti() {
+  if (reducedMotion()) return;
+  const c = el.confetti, ctx = c.getContext('2d');
+  if (!ctx) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  c.width = Math.floor(innerWidth * dpr); c.height = Math.floor(innerHeight * dpr);
+  ctx.scale(dpr, dpr);
+  const colors = ['#FF7A1A', '#43A047', '#F2C14E', '#2F80ED', '#EB5757', '#9B51E0'];
+  const parts = Array.from({ length: 140 }, () => ({
+    x: innerWidth / 2 + (Math.random() - 0.5) * 120,
+    y: innerHeight * 0.35,
+    vx: (Math.random() - 0.5) * 14,
+    vy: -Math.random() * 14 - 4,
+    w: 6 + Math.random() * 6, h: 8 + Math.random() * 8,
+    rot: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.3,
+    color: colors[Math.floor(Math.random() * colors.length)],
+  }));
+  const start = performance.now();
+  function frame(now) {
+    const t = (now - start) / 1000;
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    for (const p of parts) {
+      p.vy += 0.35; p.x += p.vx; p.y += p.vy; p.vx *= 0.99; p.rot += p.vr;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.fillStyle = p.color; ctx.globalAlpha = Math.max(0, 1 - t / 2.2);
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.restore();
+    }
+    if (t < 2.2) requestAnimationFrame(frame); else ctx.clearRect(0, 0, innerWidth, innerHeight);
+  }
+  requestAnimationFrame(frame);
+}
+
+// Physical keyboard, for a laptop or an iPad with a keyboard.
+document.addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  // Enter is always swallowed, repeats included, so a held key can't activate the focused Next button and skip the result.
+  if (e.key === 'Enter') { e.preventDefault(); if (e.repeat) return; if (!started) ensureStarted(true); else over ? nextWord() : check(); return; }
+  if (e.repeat) return;
+  if (e.key === 'Backspace') { e.preventDefault(); delLetter(); return; }
+  if (/^[a-zA-Z]$/.test(e.key)) { addLetter(e.key.toLowerCase()); }
+});
+// iOS Safari only shows :active press states when a touchstart listener exists.
+document.addEventListener('touchstart', () => {}, { passive: true });
+
+el.say.addEventListener('click', () => { ensureStarted(false); speak(word); });
+el.next.addEventListener('click', () => { if (!started) ensureStarted(true); else { interacted = true; nextWord(); } });
+el.modeEasy.addEventListener('click', () => setMode('easy'));
+el.modeNormal.addEventListener('click', () => setMode('normal'));
+el.caseUpper.addEventListener('click', () => setCase('upper'));
+el.caseLower.addEventListener('click', () => setCase('lower'));
+
+// Full screen on desktop. Hidden where the browser does not allow it (iPhone Safari).
+const fsBtn = document.getElementById('fs');
+if (document.fullscreenEnabled && document.documentElement.requestFullscreen) {
+  fsBtn.hidden = false;
+  fsBtn.addEventListener('click', () => {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else document.documentElement.requestFullscreen().catch(() => {});
+  });
+  document.addEventListener('fullscreenchange', () => {
+    const on = !!document.fullscreenElement;
+    fsBtn.title = on ? 'Exit full screen' : 'Full screen';
+    fsBtn.setAttribute('aria-label', fsBtn.title);
+  });
+}
+
+// Boot
+stars = parseInt(load('ps-stars', '0'), 10) || 0;
+el.starCount.textContent = stars;
+mode = load('ps-mode', 'easy') === 'normal' ? 'normal' : 'easy';
+el.modeEasy.setAttribute('aria-pressed', mode === 'easy');
+el.modeNormal.setAttribute('aria-pressed', mode === 'normal');
+setCase(load('ps-case', 'upper') === 'lower' ? 'lower' : 'upper');
+if ('speechSynthesis' in window) { window.speechSynthesis.onvoiceschanged = () => {}; }
+buildDeck();
+nextWord();
+// Before the first tap, show Start in place of the status so the first word gets spoken (iOS needs a tap before audio).
+el.next.textContent = 'Start ▶';
+el.card.classList.add('done');
+
+// Exposed for testing in the browser console.
+window.PictureSpell = { score, get word() { return word; }, get mode() { return mode; }, get letterCase() { return letterCase; } };
+})();
+</script>
+</body>
+</html>
