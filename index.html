@@ -248,6 +248,42 @@ const MAX_TRIES = 6;
 const KEY_ROWS = ['ABCDEFG', 'HIJKLMN', 'OPQRSTU', 'VWXYZ'];
 const STATE_RANK = { off: 1, near: 2, ok: 3 };
 
+// Guesses the game will NOT read aloud. The guess is still scored and shown; only the voice skips it.
+// NO_SPEAK is exact words. NO_SPEAK_ROOTS mutes any guess that contains the root (so "shitt" padded to
+// five boxes is still muted). Keep roots to strings no innocent short word contains: "hell" would mute
+// "shell", "ass" would mute "glass", so those stay in the exact list. Edit freely.
+const NO_SPEAK = new Set([
+  // profanity and slurs
+  'ass', 'asses', 'arse', 'hell', 'crap', 'craps', 'crappy', 'bugger', 'wank', 'wanks', 'wanker',
+  'spic', 'spics', 'spick', 'chink', 'chinks', 'gook', 'gooks', 'kike', 'kikes', 'dyke', 'dykes',
+  'homo', 'homos', 'jap', 'japs', 'paki', 'pakis', 'coon', 'coons', 'negro', 'honky', 'tranny',
+  'wop', 'wops', 'beaner', 'injun', 'midget', 'spaz', 'spazz', 'tard', 'tards',
+  // body and sex
+  'naked', 'anal', 'anus', 'rape', 'raped', 'rapes', 'rapist', 'cum', 'cums', 'horny', 'dildo',
+  'pimp', 'pimps', 'hooker', 'orgasm', 'molest', 'incest', 'sperm', 'semen', 'nipple', 'douche',
+  'skank', 'milf', 'fap', 'thot', 'erotic', 'condom', 'boner', 'perv', 'pedo', 'tit', 'titty',
+  // potty words
+  'poo', 'poos', 'pee', 'pees', 'peed', 'peepee', 'weewee', 'butt', 'butts', 'bum', 'bums', 'booty',
+  'tushy', 'tushie', 'wiener', 'weiner', 'booger', 'snot', 'snotty', 'dookie', 'doodoo', 'doody',
+  'turd', 'turds', 'vomit',
+  // mild insults
+  'dummy', 'loser', 'losers', 'jerk', 'jerks', 'ugly', 'fatso', 'fatty', 'freak', 'freaks', 'freaky',
+  'weirdo', 'lame', 'dork', 'dorks', 'dorky', 'twit', 'twerp', 'wimp', 'wimps', 'wimpy', 'sissy',
+  'brat', 'brats', 'bratty', 'shutup', 'psycho',
+  // violence
+  'kill', 'kills', 'killed', 'killer', 'die', 'dies', 'died', 'dead', 'death', 'murder', 'gun', 'guns',
+  'bomb', 'bombs', 'stab', 'stabs',
+]);
+const NO_SPEAK_ROOTS = [
+  'fuck', 'shit', 'cunt', 'bitch', 'damn', 'piss', 'nigg', 'retard', 'cock', 'dick', 'twat', 'slut',
+  'whore', 'tits', 'fag', 'penis', 'vagina', 'porn', 'jizz', 'pussy', 'boob', 'nude', 'sex',
+  'poop', 'fart', 'puke', 'barf', 'stupid', 'idiot', 'moron', 'dumb', 'suck',
+];
+function isBanned(w) {
+  w = String(w).toLowerCase();
+  return NO_SPEAK.has(w) || NO_SPEAK_ROOTS.some(r => w.includes(r));
+}
+
 const el = {
   pic: document.getElementById('pic'),
   status: document.getElementById('status'),
@@ -514,8 +550,8 @@ function check() {
   const guess = { text: current, marks };
   guesses.push(guess);
   current = '';
-  // Read the guess back as the tiles flip.
-  speak(guess.text);
+  // Read the guess back as the tiles flip, unless it is on the no-speak list.
+  if (!isBanned(guess.text)) speak(guess.text);
 
   for (let i = 0; i < marks.length; i++) {
     const k = guess.text[i];
@@ -665,7 +701,7 @@ el.next.textContent = 'Start ▶';
 el.card.classList.add('done');
 
 // Exposed for testing in the browser console.
-window.PictureSpell = { score, get word() { return word; }, get mode() { return mode; }, get letterCase() { return letterCase; } };
+window.PictureSpell = { score, isBanned, get words() { return WORDS.map(e => e[0]); }, get word() { return word; }, get mode() { return mode; }, get letterCase() { return letterCase; } };
 })();
 </script>
 </body>

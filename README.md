@@ -10,12 +10,14 @@ python3 -m http.server 8765 --bind 127.0.0.1 --directory ~/3_personal/word-test
 
 Then open http://127.0.0.1:8765/ . It also works opened straight from the file, but Safari on iPad needs it served to play speech reliably.
 
+It is also live at https://bcousin93.github.io/word-test/ (GitHub Pages, served from the `main` branch of `bcousin93/word-test`). Push to `main` and the page updates in about a minute.
+
 ## How it plays
 
 - A picture (emoji) of an everyday thing, with one blank per letter. Tap **Start** once; after that each new word is spoken half a second after it appears, and the speaker button repeats it.
 - Tap letters, then the orange check. Green = right spot, yellow = in the word but the wrong spot, gray = not in the word. Gray keys turn off.
 - **Easy** turns off every key that is not in the word from the start. **Normal** turns keys off only after a wrong guess.
-- Each guess is read aloud when it is checked. A win spells the word letter by letter, pauses, then says the word, with confetti and a star. Six misses reveal the word.
+- Each guess is read aloud when it is checked, unless it is on the no-speak list (`NO_SPEAK` and `NO_SPEAK_ROOTS` near the top of the script: profanity, slurs, body and sex words, potty words, mild insults, violence). A muted guess is still scored and shown; the voice just skips it. A win spells the word letter by letter, pauses, then says the word, with confetti and a star. Six misses reveal the word.
 - **ABC / abc** switches tiles and keys between upper and lower case. Stars, mode, and case are remembered on that device.
 - Physical keyboard works: letters, Backspace, Enter (Enter also starts and advances).
 - The square button at the top right goes full screen on a desktop browser.
